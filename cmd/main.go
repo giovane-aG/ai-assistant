@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 	"time"
 
 	client "github.com/giovane-aG/ai-assistant/internal/client"
@@ -44,7 +46,7 @@ func main() {
 		nil,
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error generating content: %v", err)
 	}
 
 	fmt.Println("Gemini response: ", result.Text())
@@ -54,22 +56,30 @@ func main() {
 
 	err = elevenLabsClient.GenerateSpeech(result.Text())
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error generating speech: %v", err)
 	}
+
+	// Create a channel to handle signal interrupt
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
 	// play the audio file
 	cmd := exec.Command("afplay", "output.mp3")
+	go handleInterrupt(cmd, signalChan)
+
 	err = cmd.Start()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error starting audio: %v", err)
 	}
 
 	fmt.Println("Playing audio...")
 	// wait for the audio to finish playing
 	err = cmd.Wait()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error waiting for audio: %v", err)
 	}
+
+	close(signalChan)
 
 	fmt.Println("Audio finished playing")
 
@@ -78,7 +88,7 @@ func main() {
 		fmt.Println("Deleting audio file...")
 		err = os.Remove("output.mp3")
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Error deleting audio file: %v", err)
 		}
 	} else {
 		fmt.Println("Audio file not deleted")
@@ -87,4 +97,14 @@ func main() {
 	// wait for a while before exiting
 	time.Sleep(1 * time.Second)
 	fmt.Println("Exiting...")
+}
+
+func handleInterrupt(cmd *exec.Cmd, signalChan chan os.Signal) {
+	<-signalChan
+	fmt.Println("Received interrupt signal, cleaning up...")
+	err := cmd.Process.Kill()
+	if err != nil {
+		log.Fatalf("Error killing process: %v", err)
+	}
+	os.Exit(0)
 }
