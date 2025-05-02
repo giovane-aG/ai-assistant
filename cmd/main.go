@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	// Load environment variables from .env file
+	// load environment variables from .env file
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -49,7 +49,7 @@ func main() {
 		log.Fatalf("Error generating speech: %v", err)
 	}
 
-	// Create a channel to handle signal interrupt
+	// create a channel to handle signal interrupt
 	signalChan := setupSignalHandler()
 
 	err = playAudio(signalChan)
