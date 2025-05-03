@@ -6,16 +6,17 @@ A Go-based AI assistant that combines the power of Google's Gemini AI model with
 
 - Integration with Google's Gemini AI model for intelligent responses
 - Text-to-speech conversion using ElevenLabs API
+- Cross-platform audio playback support (Windows, macOS, Linux)
 - Command-line interface for easy interaction
 - Configurable question input
 - Optional audio file cleanup
+- Graceful interrupt handling (Ctrl+C/Command+C)
 
 ## Prerequisites
 
 - Go 1.23 or later
 - ElevenLabs API key
 - Google Gemini API key
-- macOS (for audio playback using `afplay`)
 
 ## Installation
 
@@ -60,7 +61,9 @@ go run cmd/main.go -q "What is the meaning of life?" -d yes
 ├── cmd/
 │   └── main.go          # Main application entry point
 ├── internal/
-│   └── client/          # API client implementations
+│   ├── client/          # API client implementations
+│   ├── model/           # Data models
+│   └── service/         # Business logic services
 ├── go.mod               # Go module definition
 ├── go.sum              # Go dependencies checksum
 └── .env                # Environment variables (not tracked in git)
@@ -70,6 +73,7 @@ go run cmd/main.go -q "What is the meaning of life?" -d yes
 
 - github.com/joho/godotenv v1.5.1
 - google.golang.org/genai v1.1.0
+- github.com/faiface/beep (for cross-platform audio playback)
 
 ## License
 
