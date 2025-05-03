@@ -11,7 +11,6 @@ type IGenerateContentClient interface {
 		ctx context.Context,
 		model string,
 		content string,
-		// config *GenerateContentConfig,
 	) (*model.GenerateContentResponse, error)
 }
 
