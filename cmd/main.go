@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"os/signal"
-	"syscall"
+	"time"
 
-	client "github.com/giovane-aG/ai-assistant/internal/client"
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
+	"github.com/giovane-aG/ai-assistant/internal/client"
 	"github.com/giovane-aG/ai-assistant/internal/service"
 	"github.com/joho/godotenv"
 )
@@ -49,19 +51,17 @@ func main() {
 		log.Fatalf("Error generating speech: %v", err)
 	}
 
-	// create a channel to handle signal interrupt
-	signalChan := setupSignalHandler()
-
-	err = playAudio(signalChan)
-	if err != nil {
-		log.Fatalf("Error playing audio: %v", err)
+	playAudioError := playAudio("output.mp3")
+	if playAudioError != nil {
+		log.Fatalf("Error playing audio: %v", playAudioError)
 	}
 
-	close(signalChan)
-
 	log.Println("Audio finished playing")
+
 	handleDeleteFile(*deleteFile)
+
 	log.Println("Exiting...")
+
 }
 
 func handleDeleteFile(deleteFile string) {
@@ -76,31 +76,26 @@ func handleDeleteFile(deleteFile string) {
 	}
 }
 
-func handleInterrupt(cmd *exec.Cmd, signalChan chan os.Signal) {
-	<-signalChan
-	log.Println("Received interrupt signal, cleaning up...")
-	err := cmd.Process.Kill()
+func playAudio(filename string) error {
+	f, err := os.Open(filename)
 	if err != nil {
-		log.Fatalf("Error killing process: %v", err)
+		return fmt.Errorf("error opening audio file: %w", err)
 	}
-	os.Exit(0)
-}
+	defer f.Close()
 
-func setupSignalHandler() chan os.Signal {
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	return signalChan
-}
-
-func playAudio(signalChan chan os.Signal) error {
-	cmd := exec.Command("afplay", "output.mp3")
-	go handleInterrupt(cmd, signalChan)
-
-	err := cmd.Start()
+	streamer, format, err := mp3.Decode(f)
 	if err != nil {
-		return err
+		return fmt.Errorf("error decoding audio file: %w", err)
 	}
+	defer streamer.Close()
 
-	log.Println("Playing audio...")
-	return cmd.Wait()
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	done := make(chan bool)
+	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
+		done <- true
+	})))
+
+	<-done
+
+	return nil
 }
